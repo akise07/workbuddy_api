@@ -54,13 +54,9 @@ logger = logging.getLogger(__name__)
 
 # ─── Models ─────────────────────────────────────────────
 AVAILABLE_MODELS = [
-    {"id": "deepseek-v3", "object": "model", "created": 1700000000, "owned_by": "deepseek"},
-    {"id": "claude-4.0", "object": "model", "created": 1700000000, "owned_by": "anthropic"},
-    {"id": "gpt-4o", "object": "model", "created": 1700000000, "owned_by": "openai"},
-    {"id": "gpt-5", "object": "model", "created": 1700000000, "owned_by": "openai"},
-    {"id": "o4-mini", "object": "model", "created": 1700000000, "owned_by": "openai"},
-    {"id": "gemini-2.5-pro", "object": "model", "created": 1700000000, "owned_by": "google"},
-    {"id": "gemini-2.5-flash", "object": "model", "created": 1700000000, "owned_by": "google"},
+    {"id": "deepseek-v4-pro", "object": "model", "created": 1700000000, "owned_by": "deepseek"},
+    {"id": "deepseek-v4-flash", "object": "model", "created": 1700000000, "owned_by": "deepseek"},
+    {"id": "hy3", "object": "model", "created": 1700000000, "owned_by": "hy"},
 ]
 
 # ─── Token Management ──────────────────────────────────

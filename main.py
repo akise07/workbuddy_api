@@ -318,7 +318,11 @@ def build_upstream_headers(model):
     }
 
 # ─── Models Endpoint ───────────────────────────────────
-@app.get("/v1/models", dependencies=[Depends(verify_api_key)])
+@app.api_route(
+    "/v1/models",
+    methods=["GET", "POST"],
+    dependencies=[Depends(verify_api_key)],
+)
 async def list_models():
     return {"object": "list", "data": AVAILABLE_MODELS}
 

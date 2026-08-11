@@ -320,7 +320,7 @@ def build_upstream_headers(model):
 # ─── Models Endpoint ───────────────────────────────────
 @app.api_route(
     "/v1/models",
-    methods=["GET", "POST"],
+    methods=["GET", "POST", "OPTIONS"],
     dependencies=[Depends(verify_api_key)],
 )
 async def list_models():

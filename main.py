@@ -327,7 +327,12 @@ async def list_models():
     return {"object": "list", "data": AVAILABLE_MODELS}
 
 # ─── Chat Completions ─────────────────────────────────
-@app.post("/v1/chat/completions", dependencies=[Depends(verify_api_key)])
+# @app.post("/v1/chat/completions", dependencies=[Depends(verify_api_key)])
+@app.api_route(
+    "/v1/chat/completions",
+    methods=["POST", "OPTIONS"],
+    dependencies=[Depends(verify_api_key)],
+)
 async def chat_completions(request: Request):
     bearer = get_bearer_token()
     if not bearer:
@@ -366,6 +371,42 @@ async def chat_completions(request: Request):
     else:
         return await _non_stream_response(payload, headers, model)
 
+TERMINAL_FINISH_REASONS = {"stop", "length", "tool_calls", "content_filter", "function_call"}
+
+def _normalize_chunk(chunk, model, request_id):
+    """Rewrite an upstream chunk into a standards-conformant OpenAI delta.
+
+    Upstream marks every in-flight chunk with `finish_reason: ""`, which clients
+    that treat any non-null finish_reason as end-of-turn (Zed) read as "message
+    over" — the stream then gets chopped into one block per chunk. Empty delta
+    fields upstream always includes are dropped here as well.
+    """
+    chunk["model"] = model
+    if not chunk.get("id"):
+        chunk["id"] = request_id
+    chunk.setdefault("object", "chat.completion.chunk")
+    chunk.setdefault("created", int(time.time()))
+    for choice in chunk.get("choices") or []:
+        choice.setdefault("index", 0)
+        if choice.get("finish_reason") not in TERMINAL_FINISH_REASONS:
+            choice["finish_reason"] = None
+        if choice.get("logprobs") is None:
+            choice.pop("logprobs", None)
+        delta = choice.get("delta")
+        if not isinstance(delta, dict):
+            continue
+        for key in ("content", "reasoning", "reasoning_content", "role", "refusal"):
+            if delta.get(key) == "":
+                delta.pop(key, None)
+        fc = delta.get("function_call")
+        if fc is None or (isinstance(fc, dict) and not fc.get("name") and not fc.get("arguments")):
+            delta.pop("function_call", None)
+        if delta.get("tool_calls") == []:
+            delta.pop("tool_calls")
+        if delta.get("extra_fields") is None:
+            delta.pop("extra_fields", None)
+    return chunk
+
 async def _stream_response(payload, headers, model):
     request_id = "chatcmpl-{}".format(uuid.uuid4().hex[:12])
     try:
@@ -394,10 +435,8 @@ async def _stream_response(payload, headers, model):
                 try:
                     chunk = json.loads(data_str)
                     if "choices" in chunk:
-                        chunk["model"] = model
-                        if not chunk.get("id"):
-                            chunk["id"] = request_id
-                        yield "data: {}\n\n".format(json.dumps(chunk, ensure_ascii=False))
+                        yield "data: {}\n\n".format(json.dumps(
+                            _normalize_chunk(chunk, model, request_id), ensure_ascii=False))
                 except json.JSONDecodeError:
                     pass
     except Exception as e:
